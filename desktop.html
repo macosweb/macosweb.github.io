@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="icon" type="image/x-icon" href="finder.ico">
+    <title>macOS</title>
+    <script>
+        // This 'va' script seems to be an external tracking/analytics snippet.
+        // It's included here for completeness based on your previous code,
+        // but it's not directly related to the UI features.
+        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    </script>
+    <style>
+        /* Define CSS Variables for consistent styling */
+        :root {
+            /* Shared Glass Effect Variables for ALL glass elements */
+            --glass-tint-color: 255, 255, 255; /* White tint base */
+            --glass-tint-opacity-light: 0.2; /* Lighter opacity for menu bar and dock */
+            --glass-tint-opacity-heavy: 0.6; /* **ADJUSTED: Lowered opacity to make blur more obvious** */
+            --glass-frost-blur-light: 2px; /* Lighter blur for menu bar and dock */
+            --glass-frost-blur-heavy: 20px; /* **ADJUSTED: Increased blur significantly to make it obvious** */
+            --glass-noise-frequency: 0.009; /* Universal noise frequency for SVG filter */
+            --glass-distortion-strength: 77; /* Universal distortion strength for SVG filter */
+
+            /* Shared Inner Shadow Variables (used for menu bar, context menus, dock) */
+            --shadow-offset: 0;
+            --shadow-blur: 20px;
+            --shadow-spread: -5px;
+            --shadow-color: rgba(255, 255, 255, 0.7); /* White inner shadow for highlight */
+
+            /* Outer Shadow Variable (used for dock) */
+            --outer-shadow-blur: 24px;
+        }
+
+        /* --- Global Body Styles --- */
+        body {
+            margin: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            background: url(wallpaper.png) center center / cover no-repeat; /* Background image */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            font-weight: 300;
+            position: relative;
+            max-width: 100vw;
+            max-height: 100vh;
+            overflow: hidden; /* Prevent scrolling */
+            cursor: url('cursor.png'), auto; /* Custom cursor */
+        }
+
+        /* Control panel placeholder, not actively used in this UI */
+        #controls {
+            display: none;
+        }
+
+        /* --- Menu Bar Styles --- */
+        .menu-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 28px;
+            background-color: rgba(var(--glass-tint-color), var(--glass-tint-opacity-light)); /* Base tint */
+            backdrop-filter: blur(var(--glass-frost-blur-light)); /* Base blur */
+            -webkit-backdrop-filter: blur(var(--glass-frost-blur-light)); /* Webkit prefix */
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            box-sizing: border-box;
+            z-index: 1000; /* High z-index to stay on top */
+            font-size: 13px;
+            color: #333; /* Dark text color */
+            -webkit-app-region: drag; /* Allows dragging the window (if in Electron/similar) */
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05); /* Subtle bottom border */
+            box-shadow: inset 0 -1px 3px rgba(0, 0, 0, 0.05); /* Subtle inner shadow */
+            font-weight: 400;
+        }
+
+        /* Pseudo-element for the Menu Bar's frosted glass and noise effect */
+        .menu-bar::after {
+            content: '';
+            position: absolute;
+            inset: 0; /* Cover the entire element */
+            z-index: -1; /* Behind the content */
+            backdrop-filter: blur(var(--glass-frost-blur-light));
+            filter: url(#glass-distortion); /* Apply SVG noise filter */
+            isolation: isolate; /* Create new stacking context for backdrop-filter */
+            -webkit-backdrop-filter: blur(var(--glass-frost-blur-light));
+            -webkit-filter: url("#glass-distortion");
+            opacity: 0.8; /* Slightly less opaque for a lighter look */
+        }
+
+        /* Apple logo icon in the menu bar */
+        .apple-logo {
+            height: 18px;
+            margin-right: 15px;
+            vertical-align: middle;
+            cursor: pointer;
+            filter: grayscale(100%) brightness(0%); /* Makes it black */
+            -webkit-filter: grayscale(100%) brightness(0%);
+            position: relative; /* Needed for z-index and potential future pseudo-elements */
+            z-index: 1; /* Ensure logo is above any future blur/tint */
+        }
+
+        /* Individual menu items in the menu bar */
+        .menu-item {
+            padding: 0 8px;
+            cursor: default; /* Default text cursor */
+            user-select: none; /* Prevent text selection */
+            transition: background-color 0.1s ease; /* Smooth hover transition */
+            font-weight: 500;
+            position: relative; /* Needed for dropdown positioning and pseudo-element */
+            z-index: 1; /* Ensure text is above the blur */
+            border-radius: 4px; /* Apply border-radius here for the blur container */
+            overflow: hidden; /* Clip the blur to the border-radius */
+        }
+
+        /* Pseudo-element for the blur effect behind each menu item text */
+        .menu-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            background-color: rgba(var(--glass-tint-color), 0.05); /* Very subtle tint, lower opacity */
+            backdrop-filter: blur(1px); /* Even more subtle blur for items, adjusted to 1px directly */
+            -webkit-backdrop-filter: blur(1px);
+            z-index: -1; /* Place behind the text */
+            border-radius: inherit; /* Inherit border-radius from parent */
+        }
+
+
+        /* Hover and active states for menu items */
+        .menu-item:hover, .menu-item.active {
+            background-color: rgba(0, 0, 0, 0.1); /* Slight dark background on hover/active */
+            /* border-radius is now handled by .menu-item itself */
+        }
+
+        /* Spacer to push items to the right */
+        .menu-spacer {
+            flex-grow: 1;
+        }
+
+        /* Time display styling */
+        .time-display {
+            padding: 0 8px;
+            font-weight: 400;
+            position: relative; /* Also needs relative positioning for consistency if adding effects */
+            z-index: 1;
+        }
+        /* If you wanted the time display itself to have the blur: */
+        .time-display::before {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            background-color: rgba(var(--glass-tint-color), 0.05);
+            backdrop-filter: blur(1px);
+            -webkit-backdrop-filter: blur(1px);
+            z-index: -1;
+            border-radius: 4px; /* Apply border-radius here specifically */
+        }
+
+
+        /* --- Context Menu (Dropdown) Styles --- */
+        .context-menu {
+            position: absolute;
+            /* `top` and `left` will be set dynamically by JavaScript */
+            background-color: rgba(var(--glass-tint-color), var(--glass-tint-opacity-heavy)); /* Heavier tint */
+            border-radius: 6px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); /* Drop shadow */
+            padding: 8px 0;
+            min-width: 180px;
+            z-index: 1001; /* Above menu bar */
+            display: none; /* Hidden by default */
+            isolation: isolate; /* Crucial for backdrop-filter to work with filter */
+            border: 1px solid rgba(0, 0, 0, 0.1); /* Subtle border */
+
+            transform-origin: top; /* Animation origin */
+            animation: fadeInScale 0.15s ease-out forwards; /* Fade and scale in animation */
+        }
+
+        /* Inner shadow for context menu */
+        .context-menu::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 0; /* Ensures it's below content but above the glass effect */
+            border-radius: 6px;
+            box-shadow: inset var(--shadow-offset) var(--shadow-offset) var(--shadow-blur) var(--shadow-spread) var(--shadow-color);
+        }
+
+        /* Frosted glass effect with noise for context menu */
+        .context-menu::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: -1; /* Place behind the content */
+            border-radius: 6px;
+            backdrop-filter: blur(var(--glass-frost-blur-heavy)); /* Heavier blur */
+            filter: url(#glass-distortion); /* Apply SVG noise filter */
+            -webkit-backdrop-filter: blur(var(--glass-frost-blur-heavy));
+            -webkit-filter: url("#glass-distortion");
+        }
+
+        /* Class to show the context menu */
+        .context-menu.show {
+            display: block;
+        }
+
+        /* Animation for context menu appearance */
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scaleY(0.9);
+            }
+            to {
+                opacity: 1;
+                transform: scaleY(1);
+            }
+        }
+
+        /* Individual items within the context menu */
+        .context-menu-item {
+            position: relative;
+            z-index: 1; /* Content above glass effect pseudo-elements */
+            padding: 6px 15px;
+            font-size: 13px;
+            color: #333;
+            cursor: default;
+            user-select: none;
+            transition: background-color 0.1s ease;
+            white-space: nowrap; /* Prevent wrapping */
+        }
+
+        /* Hover state for context menu items */
+        .context-menu-item:hover {
+            background-color: #007aff; /* Apple blue */
+            color: white;
+        }
+
+        /* Separator line in context menu */
+        .context-menu-separator {
+            position: relative;
+            z-index: 1; /* Content above glass effect pseudo-elements */
+            height: 1px;
+            background-color: rgba(0, 0, 0, 0.1);
+            margin: 5px 0;
+        }
+
+        /* --- Dock Styles (now with noise/distortion filter) --- */
+        .glassDiv {
+            position: fixed;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%); /* Center horizontally */
+            width: auto;
+            height: 80px;
+            border-radius: 28px;
+            cursor: url('cursor.png'), auto;
+            isolation: isolate; /* Create new stacking context */
+            box-shadow: 0px 6px var(--outer-shadow-blur) rgba(0, 0, 0, 0.2); /* Outer shadow */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 20px;
+            opacity: 0; /* Start invisible for animation */
+            transform: translateX(-50%) translateY(150px); /* Start off-screen for animation */
+            animation: dockFlyInAndBounce 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards; /* Animation */
+            animation-delay: 0.25s; /* Short delay for animation */
+        }
+
+        /* Inner shadow and base tint for the dock */
+        .glassDiv::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            border-radius: 28px;
+            box-shadow: inset var(--shadow-offset) var(--shadow-offset) var(--shadow-blur) var(--shadow-spread) var(--shadow-color);
+            background-color: rgba(var(--glass-tint-color), var(--glass-tint-opacity-light));
+        }
+
+        /* Frosted glass effect with noise for the dock */
+        .glassDiv::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            border-radius: 28px;
+            backdrop-filter: blur(var(--glass-frost-blur-light));
+            filter: url(#glass-distortion); /* Apply SVG noise filter */
+            isolation: isolate;
+            -webkit-backdrop-filter: blur(var(--glass-frost-blur-light));
+            -webkit-filter: url("#glass-distortion");
+        }
+
+        /* Dock icons */
+        .dock-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            object-fit: contain;
+            cursor: url('cursor.png'), pointer;
+            position: relative;
+            z-index: 1; /* Above glass effect */
+            margin: 0 4px;
+            transition: transform 0.15s ease-out, margin 0.15s ease-out; /* Smooth hover effect */
+        }
+
+        /* Animation for the dock flying in */
+        @keyframes dockFlyInAndBounce {
+            0% { opacity: 0; transform: translateX(-50%) translateY(150px); }
+            70% { opacity: 1; transform: translateX(-50%) translateY(-10px); } /* Overshoot */
+            85% { opacity: 1; transform: translateX(-50%) translateY(5px); } /* Bounce back */
+            100% { opacity: 1; transform: translateX(-50%) translateY(0); } /* Final position */
+        }
+
+        /* --- Responsive Adjustments --- */
+        @media (max-width: 768px) {
+            .glassDiv { height: 70px; padding: 0 10px; }
+            .dock-icon { width: 48px; height: 48px; }
+            .menu-bar { height: 24px; font-size: 12px; }
+            .apple-logo { height: 16px; margin-right: 10px; }
+        }
+
+        @media (max-width: 600px) {
+            .glassDiv { height: 60px; }
+            .dock-icon { width: 40px; height: 40px; }
+            .menu-bar { height: 22px; font-size: 11px; }
+            .apple-logo { height: 14px; margin-right: 8px; }
+        }
+    </style>
+</head>
+
+<body style="background: url(wallpaper.png) center center / cover no-repeat;">
+
+    <div class="menu-bar">
+        <img src="apple.svg" alt="Apple Logo" class="apple-logo" id="appleMenuBtn">
+        <span class="menu-item" id="finderMenuBtn">Finder</span>
+        <span class="menu-item" id="fileMenuBtn">File</span>
+        <span class="menu-item" id="editMenuBtn">Edit</span>
+        <span class="menu-item" id="viewMenuBtn">View</span>
+        <span class="menu-item" id="goMenuBtn">Go</span>
+        <span class="menu-item" id="windowMenuBtn">Window</span>
+        <span class="menu-item" id="helpMenuBtn">Help</span>
+        <span class="menu-spacer"></span>
+        <span class="menu-item">
+            <img src="wifi.svg" alt="Wi-Fi" style="height:16px; vertical-align: middle; margin-right: 5px;">
+        </span>
+        <span class="menu-item">
+            <img src="battery.svg" alt="Battery" style="height:16px; vertical-align: middle; margin-right: 5px;">
+        </span>
+        <span class="menu-item time-display" id="timeDisplay"></span>
+    </div>
+
+    <div class="context-menu" id="appleContextMenu">
+        <div class="context-menu-item">About This Mac</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">System Settings...</div>
+        <div class="context-menu-item">App Store...</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Recent Items</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Force Quit Finder</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Sleep</div>
+        <div class="context-menu-item"><a href="https://macosbonfales.github.io/index.html">Restart</a></div>
+        <div class="context-menu-item">Shut Down</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Lock Screen</div>
+        <div class="context-menu-item">Log Out</div>
+    </div>
+
+    <div class="context-menu" id="finderContextMenu">
+        <div class="context-menu-item">About Finder</div>
+        <div class="context-menu-item">Preferences...</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Empty Trash...</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Hide Finder</div>
+        <div class="context-menu-item">Hide Others</div>
+        <div class="context-menu-item">Show All</div>
+    </div>
+
+    <div class="context-menu" id="fileContextMenu">
+        <div class="context-menu-item">New Window</div>
+        <div class="context-menu-item">New Folder</div>
+        <div class="context-menu-item">New Tab</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Open...</div>
+        <div class="context-menu-item">Open With</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Close Window</div>
+        <div class="context-menu-item">Save</div>
+        <div class="context-menu-item">Save As...</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Print...</div>
+    </div>
+
+    <div class="context-menu" id="editContextMenu">
+        <div class="context-menu-item">Undo</div>
+        <div class="context-menu-item">Redo</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Cut</div>
+        <div class="context-menu-item">Copy</div>
+        <div class="context-menu-item">Paste</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Select All</div>
+        <div class="context-menu-item">Find</div>
+        <div class="context-menu-item">Spelling and Grammar</div>
+    </div>
+
+    <div class="context-menu" id="viewContextMenu">
+        <div class="context-menu-item">as Icons</div>
+        <div class="context-menu-item">as List</div>
+        <div class="context-menu-item">as Columns</div>
+        <div class="context-menu-item">as Gallery</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Sort By</div>
+        <div class="context-menu-item">Clean Up By</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Hide Toolbar</div>
+        <div class="context-menu-item">Hide Sidebar</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Customize Toolbar...</div>
+    </div>
+
+    <div class="context-menu" id="goContextMenu">
+        <div class="context-menu-item">Back</div>
+        <div class="context-menu-item">Forward</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Applications</div>
+        <div class="context-menu-item">Documents</div>
+        <div class="context-menu-item">Downloads</div>
+        <div class="context-menu-item">Desktop</div>
+        <div class="context-menu-item">Home</div>
+        <div class="context-menu-item">Computer</div>
+        <div class="context-menu-item">AirDrop</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Connect to Server...</div>
+    </div>
+
+    <div class="context-menu" id="windowContextMenu">
+        <div class="context-menu-item">Minimize</div>
+        <div class="context-menu-item">Zoom</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Tile Window to Left of Screen</div>
+        <div class="context-menu-item">Tile Window to Right of Screen</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item">Bring All to Front</div>
+    </div>
+
+    <div class="context-menu" id="helpContextMenu">
+        <div class="context-menu-item">macOS Help</div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item"><a href="https://github.com/Bonfales">About Developer</a></div>
+        <div class="context-menu-item">Send Feedback...</div>
+    </div>
+
+    <div class="glassDiv" id="glassDock">
+        <img src="finder.png" alt="Finder" class="dock-icon">
+        <img src="launchpad.png" alt="Launchpad" class="dock-icon">
+        <img src="maps.png" alt="Maps" class="dock-icon">
+        <img src="music.png" alt="Music" class="dock-icon">
+        <img src="messages.png" alt="Messages" class="dock-icon">
+        <img src="photos.png" alt="Photos" class="dock-icon">
+        <img src="appstore.png" alt="Store" class="dock-icon">
+    </div>
+
+    <svg xmlns="http://www.w3.org/2000/svg" width="0" height="0" style="position:absolute; overflow:hidden">
+        <defs>
+            <filter id="glass-distortion" x="0%" y="0%" width="100%" height="100%">
+                <feturbulence type="fractalNoise" baseFrequency="var(--glass-noise-frequency) var(--glass-noise-frequency)" numOctaves="2" seed="92" result="noise"></feturbulence>
+                <fegaussianblur in="noise" stdDeviation="2" result="blurred"></fegaussianblur>
+                <fedisplacementmap in="SourceGraphic" in2="blurred" scale="var(--glass-distortion-strength)" xChannelSelector="R" yChannelSelector="G"></fedisplacementmap>
+            </filter>
+        </defs>
+    </svg>
+
+    <script>
+        // macOS Dock functionality (Magnification effect on hover)
+        (function () {
+            const dock = document.getElementById('glassDock');
+            if (!dock) return;
+
+            const icons = Array.from(dock.children);
+            
+            const MAX_SCALE = 1.8;
+            const RANGE = 150;
+
+            const handleMouseMove = (e) => {
+                const mouseX = e.clientX;
+                icons.forEach(icon => {
+                    const iconRect = icon.getBoundingClientRect();
+                    const iconCenter = iconRect.left + iconRect.width / 2;
+                    const distance = Math.abs(mouseX - iconCenter);
+
+                    if (distance < RANGE) {
+                        const falloff = (RANGE - distance) / RANGE;
+                        const scale = 1 + (MAX_SCALE - 1) * falloff;
+                        icon.style.transform = `scale(${scale}) translateY(-${(scale - 1) * 30}px)`; 
+                        icon.style.margin = `0 ${((scale - 1) * 50) + 4}px`; 
+                    } else {
+                        icon.style.transform = 'scale(1) translateY(0)';
+                        icon.style.margin = '0 4px';
+                    }
+                });
+            };
+
+            const handleMouseLeave = () => {
+                icons.forEach(icon => {
+                    icon.style.transform = 'scale(1) translateY(0)';
+                    icon.style.margin = '0 4px';
+                });
+            };
+
+            dock.addEventListener('mousemove', handleMouseMove);
+            dock.addEventListener('mouseleave', handleMouseLeave);
+        })();
+
+        // Time display for menu bar
+        function updateTime() {
+            const now = new Date();
+            const options = { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+            document.getElementById('timeDisplay').textContent = now.toLocaleString('en-US', options);
+        }
+        updateTime();
+        setInterval(updateTime, 60000);
+
+        // --- Context Menu Logic ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const menuBar = document.querySelector('.menu-bar');
+            const menuButtons = document.querySelectorAll('.menu-bar .menu-item, .menu-bar .apple-logo');
+
+            const menuMap = {
+                'appleMenuBtn': 'appleContextMenu',
+                'finderMenuBtn': 'finderContextMenu',
+                'fileMenuBtn': 'fileContextMenu',
+                'editMenuBtn': 'editContextMenu',
+                'viewMenuBtn': 'viewContextMenu',
+                'goMenuBtn': 'goContextMenu',
+                'windowMenuBtn': 'windowContextMenu',
+                'helpMenuBtn': 'helpContextMenu',
+                // Wi-Fi, Battery, Time don't have dropdowns in this example
+            };
+
+            let activeMenuElement = null;
+            let activeContextMenu = null;
+
+            function hideAllContextMenus() {
+                document.querySelectorAll('.context-menu').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+                document.querySelectorAll('.menu-bar .menu-item, .menu-bar .apple-logo').forEach(item => {
+                    item.classList.remove('active');
+                });
+                activeMenuElement = null;
+                activeContextMenu = null;
+            }
+
+            function showContextMenu(menuButton, contextMenu) {
+                hideAllContextMenus();
+                
+                const rect = menuButton.getBoundingClientRect();
+                contextMenu.style.left = `${rect.left}px`;
+                contextMenu.style.top = `${rect.bottom}px`;
+                
+                contextMenu.classList.add('show');
+                menuButton.classList.add('active');
+                activeMenuElement = menuButton;
+                activeContextMenu = contextMenu;
+            }
+
+            menuButtons.forEach(button => {
+                button.addEventListener('click', (event) => {
+                    event.stopPropagation();
+
+                    const contextMenuId = menuMap[button.id];
+                    const contextMenu = contextMenuId ? document.getElementById(contextMenuId) : null;
+
+                    if (activeMenuElement === button && contextMenu && activeContextMenu === contextMenu) {
+                        hideAllContextMenus();
+                    } else if (contextMenu) {
+                        showContextMenu(button, contextMenu);
+                    } else {
+                        // For items like Wi-Fi, Battery, Time that don't have a specific context menu
+                        hideAllContextMenus();
+                        button.classList.add('active');
+                        activeMenuElement = button;
+                        activeContextMenu = null;
+                    }
+                });
+            });
+
+            document.addEventListener('click', (event) => {
+                if (activeMenuElement && (!activeMenuElement.contains(event.target) && (!activeContextMenu || !activeContextMenu.contains(event.target)))) {
+                    hideAllContextMenus();
+                }
+            });
+
+            // Hover-to-open logic within the menu bar (if a menu is already open)
+            menuBar.addEventListener('mouseenter', (event) => {
+                if (activeMenuElement) { // Only if a menu is already open
+                    const targetMenuItem = event.target.closest('.menu-item, .apple-logo');
+                    
+                    if (targetMenuItem && targetMenuItem.id && targetMenuItem !== activeMenuElement) {
+                        const contextMenuId = menuMap[targetMenuItem.id];
+                        const newContextMenu = contextMenuId ? document.getElementById(contextMenuId) : null;
+
+                        if (newContextMenu) {
+                            showContextMenu(targetMenuItem, newContextMenu);
+                        } else {
+                            hideAllContextMenus();
+                            targetMenuItem.classList.add('active');
+                            activeMenuElement = targetMenuItem;
+                            activeContextMenu = null;
+                        }
+                    }
+                }
+            }, true);
+        });
+    </script>
+</body>
+</html>

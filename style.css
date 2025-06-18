@@ -1,0 +1,66 @@
+/* --- Context Menu (Dropdown) Styles --- */
+        .context-menu {
+            position: absolute;
+            /* `top` and `left` will be set dynamically by JavaScript */
+            background-color: rgba(var(--glass-tint-color), var(--glass-tint-opacity-heavy)); /* Heavier tint */
+            border-radius: 6px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); /* Drop shadow */
+            padding: 8px 0;
+            min-width: 180px;
+            z-index: 1001; /* Above menu bar */
+            display: none; /* Hidden by default */
+            
+            /* --- CRITICAL: Ensure isolation is directly on the parent context-menu --- */
+            isolation: isolate; /* This creates a new stacking context */
+            
+            border: 1px solid rgba(0, 0, 0, 0.1); /* Subtle border */
+
+            transform-origin: top; /* Animation origin */
+            animation: fadeInScale 0.15s ease-out forwards; /* Fade and scale in animation */
+        }
+
+        /* Inner shadow for context menu */
+        .context-menu::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 1; /* This should be above the blur layer, but below content */
+            border-radius: 6px;
+            box-shadow: inset var(--shadow-offset) var(--shadow-offset) var(--shadow-blur) var(--shadow-spread) var(--shadow-color);
+        }
+
+        /* Frosted glass effect with noise for context menu */
+        .context-menu::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            z-index: 0; /* This MUST be directly behind the content for backdrop-filter to work */
+            border-radius: 6px;
+            backdrop-filter: blur(var(--glass-frost-blur-heavy)); /* Heavier blur */
+            filter: url(#glass-distortion); /* Re-enable SVG noise filter */
+            -webkit-backdrop-filter: blur(var(--glass-frost-blur-heavy));
+            -webkit-filter: url("#glass-distortion");
+            /* No 'isolation: isolate;' here, it should be on the parent '.context-menu' */
+        }
+
+        /* Individual items within the context menu */
+        .context-menu-item {
+            position: relative;
+            z-index: 2; /* Ensure menu items are above both ::before and ::after */
+            padding: 6px 15px;
+            font-size: 13px;
+            color: #333;
+            cursor: default;
+            user-select: none;
+            transition: background-color 0.1s ease;
+            white-space: nowrap; /* Prevent wrapping */
+        }
+
+        /* Separator line in context menu */
+        .context-menu-separator {
+            position: relative;
+            z-index: 2; /* Ensure separators are above both ::before and ::after */
+            height: 1px;
+            background-color: rgba(0, 0, 0, 0.1);
+            margin: 5px 0;
+        }

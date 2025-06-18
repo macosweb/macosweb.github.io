@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="finder.ico">
+    <title>macOS</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles for the loading screen */
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden; /* Prevent scrolling during loading */
+            background-color: #0A0A0A; /* Dark background */
+        }
+
+        .loading-screen {
+            background-color: #0A0A0A; /* Dark gray similar to macOS */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1000;
+            opacity: 1; /* Starts opaque */
+            transition: opacity 1s ease-out; /* For fading out */
+        }
+
+        .loading-screen.fade-out {
+            opacity: 0;
+            pointer-events: none; /* Make it unclickable after fade */
+        }
+
+        .apple-logo {
+            width: 100px; /* Adjust size as needed */
+            height: 100px;
+            /* Using object-fit to ensure image scales correctly within its bounds */
+            object-fit: contain;
+            margin-bottom: 40px;
+        }
+
+        .progress-bar-container {
+            width: 300px;
+            height: 4px;
+            background-color: #333333; /* Darker gray for the track */
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #f0f0f0; /* White/light gray for the progress */
+            border-radius: 2px;
+            transition: width 0.05s linear; /* Smooth progress animation */
+        }
+
+        .black-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: black;
+            z-index: 999; /* Below loading screen */
+            opacity: 0; /* Starts transparent */
+            transition: opacity 0.5s ease-in-out;
+            pointer-events: none;
+        }
+
+        .black-screen.show {
+            opacity: 1;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .apple-logo {
+                width: 70px;
+                height: 70px;
+            }
+            .progress-bar-container {
+                width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- macOS Loading Screen -->
+    <div id="loadingScreen" class="loading-screen">
+        <!-- Apple Logo Image -->
+        <img src="applewhite.png" alt="Apple Logo" class="apple-logo" onerror="this.onerror=null;this.src='https://placehold.co/100x100/000000/FFFFFF?text=Logo'">
+
+        <div class="progress-bar-container">
+            <div id="progressBar" class="progress-bar"></div>
+        </div>
+    </div>
+
+    <!-- Black Screen for transition -->
+    <div id="blackScreen" class="black-screen"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loadingScreen = document.getElementById('loadingScreen');
+            const progressBar = document.getElementById('progressBar');
+            const blackScreen = document.getElementById('blackScreen');
+            let progress = 0;
+
+            // Function to update the progress bar
+            function updateProgressBar() {
+                if (progress < 100) {
+                    progress += Math.random() * 5; // Simulate variable loading speed
+                    if (progress > 100) progress = 100;
+                    progressBar.style.width = progress + '%';
+                    requestAnimationFrame(updateProgressBar); // Continue animation
+                } else {
+                    // Progress bar complete, start fade out of loading screen
+                    setTimeout(() => {
+                        loadingScreen.classList.add('fade-out');
+
+                        // After loading screen fades out, show black screen
+                        setTimeout(() => {
+                            blackScreen.classList.add('show');
+                            // After black screen, actually redirect to index.html
+                            setTimeout(() => {
+                                window.location.href = 'lockscreen.html'; // THIS IS THE REDIRECTION
+                            }, 1000); // Duration of black screen display before redirection
+                        }, 1000); // Duration of loading screen fade out
+                    }, 500); // Short delay after 100% before fading out
+                }
+            }
+
+            // Start the progress bar animation
+            updateProgressBar();
+        });
+    </script>
+</body>
+</html>
